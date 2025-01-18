@@ -1,0 +1,58 @@
+import asyncio
+import os
+import logging
+from telethon import events, TelegramClient
+
+# Настройка логирования
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Получение переменных окружения
+API_ID = os.getenv("API_ID") or input("Введите ваш API ID: ")
+API_HASH = os.getenv("API_HASH") or input("Введите ваш API Hash: ")
+PHONE_NUMBER = os.getenv("PHONE_NUMBER") or input("Введите ваш номер телефона (в формате +375XXXXXXXXX, +7XXXXXXXXXX): ")
+
+# Проверка корректности номера телефона
+if not PHONE_NUMBER.startswith(('+375', '+7')) or len(PHONE_NUMBER) < 10:
+    logger.error("Некорректный номер телефона. Убедитесь, что вы вводите его в правильном формате.")
+    exit(1)
+
+# Инициализация клиента
+client = TelegramClient('sessions', API_ID, API_HASH, system_version='4.16.30-vxCUSTOM')
+
+@client.on(events.NewMessage(pattern=r'/p (.+)', func=lambda e: True))
+async def animated_typing(event):
+    try:
+        # Получаем текст сообщения после команды /p
+        text = event.pattern_match.group(1)
+        logger.info(f"Получена команда /p с текстом: {text}")
+
+        # Эффект печатания: добавляем по одному символу с задержкой
+        typing_cursor = "▮"  # Курсор печатания
+        typed_text = ""
+
+        for char in text:
+            typed_text += char
+            await event.edit(typed_text + typing_cursor)  # Отображаем текст с курсором
+            await asyncio.sleep(0.1)  # Задержка между символами
+
+        # Убираем курсор в конце
+        await event.edit(typed_text)
+        logger.info("Анимация печатания завершена.")
+    except Exception as e:
+        logger.error(f"Ошибка при выполнении анимации печатания: {e}")
+        await event.respond("<b>Произошла ошибка во время выполнения команды.</b>", parse_mode='html')
+
+
+async def main():
+    try:
+        logger.info("Запуск клиента Telegram...")
+        await client.start(phone=PHONE_NUMBER)
+        logger.info("Скрипт успешно запущен! Автор @mshkago. Для использования напишите /p (текст) любому человеку.")
+        await client.run_until_disconnected()
+    except Exception as e:
+        logger.error(f"Ошибка при запуске клиента: {e}")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
